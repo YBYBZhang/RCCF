@@ -76,18 +76,23 @@ def load_model(model, model_path, optimizer=None, resume=False,
       print('Resumed optimizer with start lr', start_lr)
     else:
       print('No optimizer parameters in checkpoint.')
+  best = 0.
+  if 'best' in checkpoint.keys():
+      best = checkpoint['best']
+
   if optimizer is not None:
-    return model, optimizer, start_epoch
+    return model, optimizer, start_epoch, best
   else:
     return model
 
-def save_model(path, epoch, model, optimizer=None):
+def save_model(path, epoch, model, optimizer=None, best=0.):
   if isinstance(model, torch.nn.DataParallel):
     state_dict = model.module.state_dict()
   else:
     state_dict = model.state_dict()
   data = {'epoch': epoch,
-          'state_dict': state_dict}
+          'state_dict': state_dict,
+          'best': best}
   if not (optimizer is None):
     data['optimizer'] = optimizer.state_dict()
   torch.save(data, path)
