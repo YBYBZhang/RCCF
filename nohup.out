@@ -1,0 +1,67 @@
+/home/wds/CODE/RCCF/lib
+Fix size testing.
+training chunk_sizes: [16, 16]
+The output will be saved to  /home/wds/CODE/RCCF/lib/../exp/refdet/coco_dla_1x
+heads {'wh': 2, 'reg': 2}
+Namespace(K=1, aggr_weight=0.0, agnostic_ex=False, arch='dla_34', aug_ddd=0.5, aug_rot=0, batch_size=32, cat_spec_wh=False, center_thresh=0.1, chunk_sizes=[16, 16], coco_json='data/coco/annotations/instances_train2014.json', data_dir='/home/wds/CODE/RCCF/lib/../data', data_h5='data/coco/refcoco_unc/data.h5', data_json='data/coco/refcoco_unc/data.json', data_path='data/', dataset='refcoco', debug=0, debug_dir='/home/wds/CODE/RCCF/lib/../exp/refdet/coco_dla_1x/debug', debugger_theme='white', demo='', dense_hp=False, dense_wh=True, dep_weight=1, dim_weight=1, down_ratio=4, eval_oracle_dep=False, eval_oracle_hm=False, eval_oracle_hmhp=False, eval_oracle_hp_offset=False, eval_oracle_kps=False, eval_oracle_offset=False, eval_oracle_wh=False, exp_dir='/home/wds/CODE/RCCF/lib/../exp/refdet', exp_id='coco_dla_1x', fix_res=True, flip=0.5, flip_test=False, gpus=[0, 1], gpus_str='0,1', head_conv=256, heads={'wh': 2, 'reg': 2}, hide_data_time=False, hm_hp=True, hm_hp_weight=1, hm_weight=1, hp_weight=1, input_h=512, input_res=512, input_w=512, keep_res=False, kitti_split='3dop', load_model='/home/wds/CODE/RCCF/lib/../exp/refdet/coco_dla_1x/model_last.pth', lr=0.0005, lr_step=[90, 120], master_batch_size=16, mean=array([[[0.40789655, 0.44719303, 0.47026116]]], dtype=float32), metric='loss', mse_loss=False, nms=False, no_color_aug=False, norm_wh=False, not_cuda_benchmark=False, not_hm_hp=False, not_prefetch_test=False, not_rand_crop=False, not_reg_bbox=False, not_reg_hp_offset=False, not_reg_offset=False, num_classes=1, num_epochs=140, num_iters=-1, num_stacks=1, num_workers=4, off_weight=1, output_h=128, output_res=128, output_w=128, pad=31, peak_thresh=0.2, print_iter=0, rect_mask=False, reg_bbox=True, reg_hp_offset=True, reg_loss='l1', reg_offset=True, resume=True, root_dir='/home/wds/CODE/RCCF/lib/..', rot_weight=1, rotate=0, save_all=False, save_dir='/home/wds/CODE/RCCF/lib/../exp/refdet/coco_dla_1x', scale=0.4, scores_thresh=0.1, seed=317, shift=0.1, std=array([[[0.2886383 , 0.27408165, 0.27809834]]], dtype=float32), task='refdet', test=False, test_scales=[1.0], trainval=False, val_intervals=5, vis_thresh=0.3, wh_weight=0.1)
+==> initializing coco 2014 train data.
+loading annotations into memory...
+Done (t=6.31s)
+creating index...
+index created!
+Loaded train 82783 samples
+loading annotations into memory...
+Done (t=6.62s)
+creating index...
+index created!
+Loader loading data.json:  data/coco/refcoco_unc/data.json
+vocab size is  1999
+object cateogry size is  80
+we have 19994 images.
+we have 196771 anns.
+we have 42404 refs.
+we have 142210 sentences.
+label_length is  10
+Loader loading data.h5:  data/coco/refcoco_unc/data.h5
+==> initializing coco 2014 val data.
+loading annotations into memory...
+Done (t=3.68s)
+creating index...
+index created!
+Loaded val 40504 samples
+loading annotations into memory...
+Done (t=6.82s)
+creating index...
+index created!
+Loader loading data.json:  data/coco/refcoco_unc/data.json
+vocab size is  1999
+object cateogry size is  80
+we have 19994 images.
+we have 196771 anns.
+we have 3811 refs.
+we have 142210 sentences.
+label_length is  10
+Loader loading data.h5:  data/coco/refcoco_unc/data.h5
+Setting up data...
+Creating model...
+loaded /home/wds/CODE/RCCF/lib/../exp/refdet/coco_dla_1x/model_last.pth, epoch 5
+Resumed optimizer with start lr 0.0005
+Starting training...
+/home/wds/anaconda3/envs/th1.1/lib/python3.7/site-packages/torch/nn/modules/rnn.py:525: RuntimeWarning: RNN module weights are not part of single contiguous chunk of memory. This means they need to be compacted at every call, possibly greatly increasing memory usage. To compact weights again call flatten_parameters().
+  self.num_layers, self.dropout, self.training, self.bidirectional)
+/home/wds/anaconda3/envs/th1.1/lib/python3.7/site-packages/torch/nn/_reduction.py:46: UserWarning: size_average and reduce args will be deprecated, please use reduction='sum' instead.
+  warnings.warn(warning.format(ret))
+/home/wds/anaconda3/envs/th1.1/lib/python3.7/site-packages/torch/nn/parallel/_functions.py:61: UserWarning: Was asked to gather along dimension 0, but all input tensors were scalars; will instead unsqueeze and return a vector.
+  warnings.warn('Was asked to gather along dimension 0, but all '
+Traceback (most recent call last):
+  File "main_ref.py", line 109, in <module>
+    main(opt)
+  File "main_ref.py", line 77, in main
+    log_dict_train, _ = trainer.train(epoch, train_loader)
+  File "/home/wds/CODE/RCCF/lib/trains/base_trainer.py", line 120, in train
+    return self.run_epoch('train', epoch, data_loader)
+  File "/home/wds/CODE/RCCF/lib/trains/base_trainer.py", line 75, in run_epoch
+    self.optimizer.step()
+  File "/home/wds/anaconda3/envs/th1.1/lib/python3.7/site-packages/torch/optim/adam.py", line 93, in step
+    exp_avg.mul_(beta1).add_(1 - beta1, grad)
+KeyboardInterrupt
