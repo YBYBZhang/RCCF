@@ -60,6 +60,7 @@ def main(opt):
   if opt.load_model != '':
     model, optimizer, start_epoch, best = load_model(
       model, opt.load_model, optimizer, opt.resume, opt.lr, opt.lr_step)
+    best = 0. if best is None else best
 
   Trainer = train_factory[opt.task]
   trainer = Trainer(opt, model, optimizer)
@@ -75,6 +76,8 @@ def main(opt):
   for epoch in range(start_epoch + 1, opt.num_epochs + 1):
     mark = epoch if opt.save_all else 'last'
     log_dict_train, _ = trainer.train(epoch, train_loader)
+    save_model(os.path.join(opt.save_dir, 'model_last.pth'), 
+                 epoch, model, optimizer, best)
     logger.write('epoch: {} |'.format(epoch))
     for k, v in log_dict_train.items():
       logger.scalar_summary('train_{}'.format(k), v, epoch)
@@ -88,14 +91,12 @@ def main(opt):
       for k, v in log_dict_val.items():
         logger.scalar_summary('val_{}'.format(k), v, epoch)
         logger.write('{} {:8f} | '.format(k, v))
-      if acc >  best:
+      if best < acc:
         #best = log_dict_val[opt.metric]
         best = acc
         save_model(os.path.join(opt.save_dir, 'model_best.pth'), 
                    epoch, model, best)
 
-    save_model(os.path.join(opt.save_dir, 'model_last.pth'), 
-                 epoch, model, optimizer, best)
     logger.write('\n')
     if epoch in opt.lr_step:
       #save_model(os.path.join(opt.save_dir, 'model_{}.pth'.format(epoch)), 

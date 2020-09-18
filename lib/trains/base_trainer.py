@@ -95,7 +95,7 @@ class BaseTrainer(object):
       if opt.debug > 0:
         self.debug(batch, output, iter_id)
       
-      if opt.test:
+      if opt.test or phase == 'val':
         self.save_result(output, batch, results)
       del output, loss, loss_stats
     

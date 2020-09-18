@@ -14,6 +14,7 @@ import torch.nn.functional as F
 import torch.utils.model_zoo as model_zoo
 
 from .DCNv2.dcn_v2 import DCN
+from models.utils import _sigmoid
 
 BN_MOMENTUM = 0.1
 logger = logging.getLogger(__name__)
@@ -648,7 +649,8 @@ class DLARef(nn.Module):
         c3_attn = c3_attn.sum(1, keepdim=True)
         # build center map
         center_logit = (c1_attn + c2_attn + c3_attn) / 3
-        center_map = torch.sigmoid(center_logit)
+        #center_map = torch.sigmoid(center_logit)
+        center_map = _sigmoid(center_logit)
         z = {}
         z['hm'] = center_map
         for head in self.heads:
