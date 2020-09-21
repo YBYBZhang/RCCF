@@ -95,7 +95,7 @@ def main(opt):
         #best = log_dict_val[opt.metric]
         best = acc
         save_model(os.path.join(opt.save_dir, 'model_best.pth'), 
-                   epoch, model, best)
+                   epoch, model, optimizer, best)
 
     logger.write('\n')
     if epoch in opt.lr_step:

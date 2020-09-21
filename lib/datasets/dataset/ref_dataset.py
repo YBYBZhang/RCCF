@@ -179,6 +179,7 @@ class Loader(COCO):
             if iou(s['predict'], s['gt_bbox']) > 0.5:
                 acc += 1
         print("ACCURACY : ", acc / len(results))
+        return acc / len(results)
 
 #class COCO(data.Dataset):
 #  num_classes = 80
