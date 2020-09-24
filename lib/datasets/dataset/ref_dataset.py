@@ -29,8 +29,8 @@ from .coco import COCO
 from utils.IOU import iou
 
 class Loader(COCO):
-    num_classes = 1
-    max_objs = 1
+    num_classes = 90
+    max_objs = 100
     default_resolution = [512, 512]
     mean = np.array([0.40789654, 0.44719302, 0.47026115],
                    dtype=np.float32).reshape(1, 1, 3)
@@ -47,6 +47,8 @@ class Loader(COCO):
         # load the json file which contains info about the dataset
         print('Loader loading data.json: ', opt.data_json)
         self.info = json.load(open(opt.data_json))
+        self.obj_dir = os.path.join(os.path.dirname(opt.data_json), "object_data.json")
+        self.imgToObj =  json.load(open(self.obj_dir))
         self.split = split
         self.word_to_ix = self.info['word_to_ix']
         #self.vocab_size = len(self.word_to_ix)
@@ -68,6 +70,7 @@ class Loader(COCO):
         print('label_length is ', self.label_length)
 
         # construct mapping
+        
         self.Refs = {ref['ref_id']: ref for ref in self.refs}
         self.Images = {image['image_id']: image for image in self.images}
         self.Anns = {ann['ann_id']: ann for ann in self.anns}

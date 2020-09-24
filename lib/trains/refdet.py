@@ -121,7 +121,7 @@ class RefdetTrainer(BaseTrainer):
     reg = output['reg'] if self.opt.reg_offset else None
     dets = ctdet_decode(
       output['hm'], output['wh'], reg=reg,
-      cat_spec_wh=self.opt.cat_spec_wh, K=self.opt.K)
+      cat_spec_wh=self.opt.cat_spec_wh, K=1)
     dets = dets.detach().cpu().numpy().reshape(1, -1, dets.shape[2])
     dets_out = ctdet_post_process(
       dets.copy(), batch['meta']['c'].cpu().numpy(),

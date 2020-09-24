@@ -65,7 +65,7 @@ class BaseTrainer(object):
       data_time.update(time.time() - end)
 
       for k in batch:
-        if k != 'meta':
+        if k != 'meta' and k!= 'objects':
           batch[k] = batch[k].to(device=opt.device, non_blocking=True)    
       try:
         output, loss, loss_stats = model_with_loss(batch)
