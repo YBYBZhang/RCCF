@@ -99,7 +99,8 @@ class opts(object):
     self.parser.add_argument('--trainval', action='store_true',
                              help='include validation in training and '
                                   'test on test set')
-
+    self.parser.add_argument('--use_aux', action='store_true', 
+                            help-'whether to use aux loss')
     # test
     self.parser.add_argument('--flip_test', action='store_true',
                              help='flip data augmentation.')
@@ -326,7 +327,7 @@ class opts(object):
         opt.heads.update({'reg': 2})
     elif opt.task == 'refdet':
       # assert opt.dataset in ['pascal', 'coco']
-      opt.heads = {'wh': 2 if not opt.cat_spec_wh else 2 * opt.num_classes}
+      opt.heads = {'wh': 2}
       if opt.reg_offset:
         opt.heads.update({'reg': 2})
     elif opt.task == 'multi_pose':
