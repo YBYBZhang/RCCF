@@ -34,7 +34,7 @@ class opts(object):
                                   'in the exp dir if load_model is empty.') 
 
     # system
-    self.parser.add_argument('--gpus', default='0', 
+    self.parser.add_argument('--gpus', default='-1', 
                              help='-1 for CPU, use comma for multiple gpus')
     self.parser.add_argument('--num_workers', type=int, default=4,
                              help='dataloader threads. 0 for single-thread.')
@@ -100,7 +100,7 @@ class opts(object):
                              help='include validation in training and '
                                   'test on test set')
     self.parser.add_argument('--use_aux', action='store_true', 
-                            help-'whether to use aux loss')
+                            help='whether to use aux loss')
     # test
     self.parser.add_argument('--flip_test', action='store_true',
                              help='flip data augmentation.')
@@ -327,9 +327,9 @@ class opts(object):
         opt.heads.update({'reg': 2})
     elif opt.task == 'refdet':
       # assert opt.dataset in ['pascal', 'coco']
-      opt.heads = {'wh': 2}
+      opt.heads = {'wh': 2 if not opt.cat_spec_wh else 2 * opt.num_classes, 'obj_wh': 2}
       if opt.reg_offset:
-        opt.heads.update({'reg': 2})
+        opt.heads.update({'reg': 2, 'obj_reg': 2})
     elif opt.task == 'multi_pose':
       # assert opt.dataset in ['coco_hp']
       opt.flip_idx = dataset.flip_idx

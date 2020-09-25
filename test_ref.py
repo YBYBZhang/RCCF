@@ -42,7 +42,7 @@ def main(opt):
   opt.device = torch.device('cuda' if opt.gpus[0] >= 0 else 'cpu')
   
   print('Creating model...')
-  model = get_dla_ref_net(num_layers=opt.arch.split("_")[-1], heads=opt.heads, vocab_size=val_dataset.vocab_size, head_conv=opt.head_conv)
+  model = get_dla_ref_net(num_layers=opt.arch.split("_")[-1], heads=opt.heads, vocab_size=val_dataset.vocab_size, head_conv=opt.head_conv, use_aux=opt.use_aux)
   optimizer = torch.optim.Adam(model.parameters(), opt.lr)
   start_epoch = 0
   if opt.load_model != '':

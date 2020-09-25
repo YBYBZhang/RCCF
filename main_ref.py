@@ -66,10 +66,10 @@ def main(opt):
   trainer = Trainer(opt, model, optimizer)
   trainer.set_device(opt.gpus, opt.chunk_sizes, opt.device)
 
-  if opt.test:
-    _, preds = trainer.val(0, val_loader)
-    val_loader.dataset.run_eval(preds, opt.save_dir)
-    return
+#  if opt.test:
+#    _, preds = trainer.val(0, val_loader)
+#    val_loader.dataset.run_eval(preds, opt.save_dir)
+#    return
   
 
   print('Starting training...')
@@ -88,6 +88,7 @@ def main(opt):
       with torch.no_grad():
         log_dict_val, preds = trainer.val(epoch, val_loader)
         acc = val_loader.dataset.run_eval_ref(preds)
+        break
       for k, v in log_dict_val.items():
         logger.scalar_summary('val_{}'.format(k), v, epoch)
         logger.write('{} {:8f} | '.format(k, v))

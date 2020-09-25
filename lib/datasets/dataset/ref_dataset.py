@@ -29,7 +29,7 @@ from .coco import COCO
 from utils.IOU import iou
 
 class Loader(COCO):
-    num_classes = 90
+    num_classes = 80
     max_objs = 100
     default_resolution = [512, 512]
     mean = np.array([0.40789654, 0.44719302, 0.47026115],

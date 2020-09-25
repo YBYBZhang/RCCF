@@ -517,6 +517,7 @@ class RNNEncoder(nn.Module):
     self.filter1 = nn.Linear(n_layers * self.num_dirs * hidden_size, 64)
     self.filter2 = nn.Linear(n_layers * self.num_dirs * hidden_size, 64)
     self.filter3 = nn.Linear(n_layers * self.num_dirs * hidden_size, 64)
+    self.reason_filter = nn.Linear(n_layers * self.num_dirs * hidden_size, 64)
 
   def forward(self, input_labels):
     """
@@ -577,8 +578,9 @@ class RNNEncoder(nn.Module):
       filter_vec1 = self.filter1(hidden)
       filter_vec2 = self.filter2(hidden)
       filter_vec3 = self.filter3(hidden)
+      reason_vec = self.reason_filter(hidden)
 
-    return output, hidden, embedded, filter_vec1, filter_vec2, filter_vec3
+    return output, hidden, embedded, filter_vec1, filter_vec2, filter_vec3, reason_vec
 
 class DLARef(nn.Module):
     def __init__(self, base_name, heads, pretrained, down_ratio, final_kernel,
@@ -660,8 +662,8 @@ class DLARef(nn.Module):
 
 class DLARef_aux(nn.Module):
     def __init__(self, base_name, heads, pretrained, down_ratio, final_kernel,
-                 last_level, head_conv, vocab_size, word_embedding_size, word_vec_size, hidden_size, out_channel=0, n_head=2, num_classes=90):
-        super(DLARef, self).__init__()
+                 last_level, head_conv, vocab_size, word_embedding_size, word_vec_size, hidden_size, out_channel=0, n_head=2, num_classes=80):
+        super(DLARef_aux, self).__init__()
         assert down_ratio in [2, 4, 8, 16]
         self.first_level = int(np.log2(down_ratio))
         self.last_level = last_level
@@ -720,7 +722,7 @@ class DLARef_aux(nn.Module):
         filter_vec1 = filter_vec1.view(b, w, 1, 1)
         filter_vec2 = filter_vec2.view(b, w, 1, 1)
         filter_vec3 = filter_vec3.view(b, w, 1, 1)
-        reason_vec = reason_vec.view(b, w, 1, 1)
+        #reason_vec = reason_vec.view(b, w, 1, 1)
 
         # build language attention to visual
         c1, c2, c3 = y[-1], y[-2], y[-3]
@@ -732,8 +734,8 @@ class DLARef_aux(nn.Module):
 #        c3_attn = c3_attn.sum(1, keepdim=True)
         # get attention feature map
         att_map = (c1_attn + c2_attn + c3_attn) / 3
-        obj_map = self.obj_hm(att_map)
-        att_map = self.reason(reason_vec, att_map)
+        obj_map = _sigmoid(self.obj_hm(att_map))
+        att_map, _ = self.reason(reason_vec, att_map)
 #        center_map = _sigmoid(center_logit)
         center_map = _sigmoid(self.top(att_map))
         z = {}
@@ -765,7 +767,7 @@ def get_ref_net(num_layers, heads, vocab_size, word_embedding_size=1024, word_ve
                  word_embedding_size=word_embedding_size, 
                  word_vec_size=word_vec_size, 
                  hidden_size=hidden_size,
-                 num_classes=90)
+                 num_classes=80)
   else:
     model = DLARef('dla{}'.format(num_layers), heads,
                  pretrained=True,

@@ -28,6 +28,7 @@ class RefdetLoss(torch.nn.Module):
   def forward(self, outputs, batch):
     opt = self.opt
     hm_loss, wh_loss, off_loss = 0, 0, 0
+    obj_hm_loss, obj_wh_loss, obj_off_loss = 0, 0, 0
     for s in range(opt.num_stacks):
       output = outputs[s]
 #      if not opt.mse_loss:
@@ -35,6 +36,8 @@ class RefdetLoss(torch.nn.Module):
 #
 #      if opt.eval_oracle_hm:
 #        output['hm'] = batch['hm']
+      hm_loss += self.crit(output['hm'], batch['hm']) / opt.num_stacks
+      obj_hm_loss = self.crit(output['obj_hm'], batch['objects']['hm']) / opt.num_stacks
       if opt.eval_oracle_wh:
         output['wh'] = torch.from_numpy(gen_oracle_map(
           batch['wh'].detach().cpu().numpy(), 
@@ -46,7 +49,6 @@ class RefdetLoss(torch.nn.Module):
           batch['ind'].detach().cpu().numpy(), 
           output['reg'].shape[3], output['reg'].shape[2])).to(opt.device)
 
-      hm_loss += self.crit(output['hm'], batch['hm']) / opt.num_stacks
       if opt.wh_weight > 0:
         if opt.dense_wh:
           mask_weight = batch['dense_wh_mask'].sum() + 1e-4
@@ -64,11 +66,43 @@ class RefdetLoss(torch.nn.Module):
             batch['ind'], batch['wh']) / opt.num_stacks
       
       if opt.reg_offset and opt.off_weight > 0:
-        off_loss += self.crit_reg(output['reg'], batch['reg_mask'],
-                             batch['ind'], batch['reg']) / opt.num_stacks
+        obj_off_loss += self.crit_reg(output['reg'], batch['objects']['reg_mask'],
+                             batch['objects']['ind'], batch['objects']['reg']) / opt.num_stacks
+      if opt.use_aux:
+        if opt.eval_oracle_wh:
+          output['obj_wh'] = torch.from_numpy(gen_oracle_map(
+            batch['objects']['wh'].detach().cpu().numpy(), 
+            batch['objects']['ind'].detach().cpu().numpy(), 
+            output['obj_wh'].shape[3], output['obj_wh'].shape[2])).to(opt.device)
+        if opt.eval_oracle_offset:
+          output['obj_reg'] = torch.from_numpy(gen_oracle_map(
+            batch['objects']['reg'].detach().cpu().numpy(), 
+            batch['objects']['ind'].detach().cpu().numpy(), 
+            output['obj_reg'].shape[3], output['obj_reg'].shape[2])).to(opt.device)
+        if opt.wh_weight > 0:
+          if opt.dense_wh:
+            obj_mask_weight = batch['objects']['dense_wh_mask'].sum() + 1e-4
+            obj_wh_loss += (
+              self.crit_wh(output['obj_wh'] * batch['objects']['dense_wh_mask'],
+              batch['objects']['dense_wh'] * batch['objects']['dense_wh_mask']) / 
+              mask_weight) / opt.num_stacks
+          else:
+            obj_wh_loss += self.crit_reg(
+              output['obj_wh'], batch['objects']['reg_mask'],
+              batch['objects']['ind'], batch['objects']['wh']) / opt.num_stacks
         
-    loss = opt.wh_weight * wh_loss + opt.off_weight * off_loss + opt.hm_weight *  hm_loss
-    loss_stats = {'loss': loss, 'wh_loss': wh_loss, 'off_loss': off_loss, 'hm_loss': hm_loss}
+        if opt.reg_offset and opt.off_weight > 0:
+          off_loss += self.crit_reg(output['reg'], batch['reg_mask'],
+                               batch['ind'], batch['reg']) / opt.num_stacks
+        
+    sub_loss = opt.wh_weight * wh_loss + opt.off_weight * off_loss + opt.hm_weight *  hm_loss
+    if opt.use_aux:
+        obj_loss = opt.wh_weight * obj_wh_loss + opt.off_weight * obj_off_loss + opt.hm_weight * obj_hm_loss
+        loss = obj_loss + sub_loss
+        loss_stats = {'loss': loss, 'sub_loss': sub_loss, 'wh_loss': wh_loss, 'off_loss': off_loss, 'hm_loss': hm_loss, 'obj_loss': obj_loss, 'obj_hm_loss': obj_hm_loss, 'obj_wh_loss': obj_wh_loss, 'obj_off_loss': obj_off_loss}
+    else:
+        loss = sub_loss
+        loss_stats = {'loss': loss, 'wh_loss': wh_loss, 'off_loss': off_loss, 'hm_loss': hm_loss}
     return loss, loss_stats
 
 class RefdetTrainer(BaseTrainer):
@@ -76,7 +110,10 @@ class RefdetTrainer(BaseTrainer):
     super(RefdetTrainer, self).__init__(opt, model, optimizer=optimizer)
   
   def _get_losses(self, opt):
-    loss_states = ['loss', 'hm_loss', 'wh_loss', 'off_loss']
+    # loss_states = ['loss', 'hm_loss', 'wh_loss', 'off_loss']
+    loss_states = ['loss', 'sub_loss', 'hm_loss', 'wh_loss', 'off_loss']
+    if opt.use_aux:
+      loss_states += ['obj_loss', 'obj_hm_loss', 'obj_wh_loss', 'obj_off_loss']
     loss = RefdetLoss(opt)
     return loss_states, loss
 
