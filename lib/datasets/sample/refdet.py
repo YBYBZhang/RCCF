@@ -173,7 +173,7 @@ class RefDetDataset(data.Dataset):
                np.zeros((1, 6), dtype=np.float32)
       meta = {'c': c, 's': s, 'gt_det': gt_det, 'img_id': img_id}
       ret['meta'] = meta
-    if opt.use_aux:
+    if self.opt.use_aux:
       ret['objects'] = self.getitem_obj(img_id, sent_id)
     return ret
 

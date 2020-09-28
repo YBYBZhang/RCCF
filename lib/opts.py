@@ -327,7 +327,7 @@ class opts(object):
         opt.heads.update({'reg': 2})
     elif opt.task == 'refdet':
       # assert opt.dataset in ['pascal', 'coco']
-      opt.heads = {'wh': 2 if not opt.cat_spec_wh else 2 * opt.num_classes, 'obj_wh': 2}
+      opt.heads = {'obj_wh': 2 if not opt.cat_spec_wh else 2 * opt.num_classes, 'wh': 2}
       if opt.reg_offset:
         opt.heads.update({'reg': 2, 'obj_reg': 2})
     elif opt.task == 'multi_pose':

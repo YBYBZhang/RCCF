@@ -637,7 +637,7 @@ class DLARef(nn.Module):
             y.append(x[i].clone())
         self.ida_up(y, 0, len(y))
         # extract language feature
-        output, hidden, embedded, filter_vec1, filter_vec2, filter_vec3 = self.lang_encoder(sentence)
+        output, hidden, embedded, filter_vec1, filter_vec2, filter_vec3, _ = self.lang_encoder(sentence)
         b, w = filter_vec1.size()
         filter_vec1 = filter_vec1.view(b, w, 1, 1)
         filter_vec2 = filter_vec2.view(b, w, 1, 1)

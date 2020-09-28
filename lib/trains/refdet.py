@@ -37,7 +37,6 @@ class RefdetLoss(torch.nn.Module):
 #      if opt.eval_oracle_hm:
 #        output['hm'] = batch['hm']
       hm_loss += self.crit(output['hm'], batch['hm']) / opt.num_stacks
-      obj_hm_loss = self.crit(output['obj_hm'], batch['objects']['hm']) / opt.num_stacks
       if opt.eval_oracle_wh:
         output['wh'] = torch.from_numpy(gen_oracle_map(
           batch['wh'].detach().cpu().numpy(), 
@@ -66,9 +65,10 @@ class RefdetLoss(torch.nn.Module):
             batch['ind'], batch['wh']) / opt.num_stacks
       
       if opt.reg_offset and opt.off_weight > 0:
-        obj_off_loss += self.crit_reg(output['reg'], batch['objects']['reg_mask'],
-                             batch['objects']['ind'], batch['objects']['reg']) / opt.num_stacks
+        off_loss += self.crit_reg(output['reg'], batch['reg_mask'],
+                            batch['ind'], batch['reg']) / opt.num_stacks
       if opt.use_aux:
+        obj_hm_loss = self.crit(output['obj_hm'], batch['objects']['hm']) / opt.num_stacks
         if opt.eval_oracle_wh:
           output['obj_wh'] = torch.from_numpy(gen_oracle_map(
             batch['objects']['wh'].detach().cpu().numpy(), 
@@ -92,17 +92,19 @@ class RefdetLoss(torch.nn.Module):
               batch['objects']['ind'], batch['objects']['wh']) / opt.num_stacks
         
         if opt.reg_offset and opt.off_weight > 0:
-          off_loss += self.crit_reg(output['reg'], batch['reg_mask'],
-                               batch['ind'], batch['reg']) / opt.num_stacks
+          obj_off_loss += self.crit_reg(output['obj_reg'], batch['objects']['reg_mask'],
+                              batch['objects']['ind'], batch['objects']['reg']) / opt.num_stacks
         
     sub_loss = opt.wh_weight * wh_loss + opt.off_weight * off_loss + opt.hm_weight *  hm_loss
     if opt.use_aux:
-        obj_loss = opt.wh_weight * obj_wh_loss + opt.off_weight * obj_off_loss + opt.hm_weight * obj_hm_loss
-        loss = obj_loss + sub_loss
-        loss_stats = {'loss': loss, 'sub_loss': sub_loss, 'wh_loss': wh_loss, 'off_loss': off_loss, 'hm_loss': hm_loss, 'obj_loss': obj_loss, 'obj_hm_loss': obj_hm_loss, 'obj_wh_loss': obj_wh_loss, 'obj_off_loss': obj_off_loss}
+        loss = sub_loss
+        loss_stats = {'loss': loss, 'sub_loss': sub_loss, 'wh_loss': wh_loss, 'off_loss': off_loss, 'hm_loss': hm_loss}
+#        obj_loss = opt.wh_weight * obj_wh_loss + opt.off_weight * obj_off_loss + opt.hm_weight * obj_hm_loss
+#        loss = obj_loss + sub_loss
+#        loss_stats = {'loss': loss, 'sub_loss': sub_loss, 'wh_loss': wh_loss, 'off_loss': off_loss, 'hm_loss': hm_loss, 'obj_loss': obj_loss, 'obj_hm_loss': obj_hm_loss, 'obj_wh_loss': obj_wh_loss, 'obj_off_loss': obj_off_loss}
     else:
         loss = sub_loss
-        loss_stats = {'loss': loss, 'wh_loss': wh_loss, 'off_loss': off_loss, 'hm_loss': hm_loss}
+        loss_stats = {'loss': loss, 'sub_loss': sub_loss, 'wh_loss': wh_loss, 'off_loss': off_loss, 'hm_loss': hm_loss}
     return loss, loss_stats
 
 class RefdetTrainer(BaseTrainer):
@@ -112,8 +114,8 @@ class RefdetTrainer(BaseTrainer):
   def _get_losses(self, opt):
     # loss_states = ['loss', 'hm_loss', 'wh_loss', 'off_loss']
     loss_states = ['loss', 'sub_loss', 'hm_loss', 'wh_loss', 'off_loss']
-    if opt.use_aux:
-      loss_states += ['obj_loss', 'obj_hm_loss', 'obj_wh_loss', 'obj_off_loss']
+#    if opt.use_aux:
+#      loss_states += ['obj_loss', 'obj_hm_loss', 'obj_wh_loss', 'obj_off_loss']
     loss = RefdetLoss(opt)
     return loss_states, loss
 

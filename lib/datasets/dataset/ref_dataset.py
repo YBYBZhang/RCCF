@@ -179,6 +179,8 @@ class Loader(COCO):
     def run_eval_ref(self, results):
         acc = 0.
         for s in results:
+            print("predict: ", s['predict'])
+            print("gt_bbox: ", s['gt_bbox'])
             if iou(s['predict'], s['gt_bbox']) > 0.5:
                 acc += 1
         print("ACCURACY : ", acc / len(results))
