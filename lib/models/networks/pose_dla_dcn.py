@@ -705,8 +705,8 @@ class DLARef_aux(nn.Module):
             self.__setattr__(head, fc)
         self.obj_hm = nn.Conv2d(64*3, num_classes, 1, stride=1) 
         self.lang_encoder = RNNEncoder(vocab_size, word_embedding_size, word_vec_size, hidden_size)
-#        self.reason = GaranAttention(d_q=64, d_v=64, n_head=n_head)
-#        self.top = nn.Conv2d(64, 1, 1, stride=1)
+        self.reason = GaranAttention(d_q=64, d_v=64, n_head=n_head)
+        self.top = nn.Conv2d(64, 1, 1, stride=1)
 
     def forward(self, x, sentence):
         x = self.base(x)
@@ -722,25 +722,26 @@ class DLARef_aux(nn.Module):
         filter_vec1 = filter_vec1.view(b, w, 1, 1)
         filter_vec2 = filter_vec2.view(b, w, 1, 1)
         filter_vec3 = filter_vec3.view(b, w, 1, 1)
-        #reason_vec = reason_vec.view(b, w, 1, 1)
+        reason_vec = reason_vec.view(b, w, 1, 1)
 
         # build language attention to visual
         c1, c2, c3 = y[-1], y[-2], y[-3]
         c1_attn = c1 * filter_vec1
         c2_attn = c2 * filter_vec2
         c3_attn = c3 * filter_vec3
-        c1_attn_c = c1_attn.sum(1, keepdim=True)
-        c2_attn_c = c2_attn.sum(1, keepdim=True)
-        c3_attn_c = c3_attn.sum(1, keepdim=True)
+#        c1_attn_c = c1_attn.sum(1, keepdim=True)
+#        c2_attn_c = c2_attn.sum(1, keepdim=True)
+#        c3_attn_c = c3_attn.sum(1, keepdim=True)
         # get attention feature map
         att_map_c = (c1_attn_c + c2_attn_c + c3_attn_c) / 3
 #        att_map_o = (c1_attn + c2_attn + c3_attn) / 3
         att_map_o = torch.cat((c1_attn, c2_attn,c3_attn), dim=1)
         obj_map = _sigmoid(self.obj_hm(att_map_o))
-#        att_map, _ = self.reason(reason_vec, att_map_c)
+        
+        att_map_c, _ = self.reason(reason_vec, att_map_c)
 #        center_map = _sigmoid(center_logit)
-#        center_map = _sigmoid(self.top(att_map))
-        center_map = _sigmoid(att_map_c)
+        center_map = _sigmoid(self.top(att_map_c))
+#        center_map = _sigmoid(att_map_c)
         z = {}
         z['hm'] = center_map
         z['obj_hm'] = obj_map
