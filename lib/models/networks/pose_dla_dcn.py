@@ -703,7 +703,7 @@ class DLARef_aux(nn.Module):
               else:
                 fill_fc_weights(fc)
             self.__setattr__(head, fc)
-        self.obj_hm = nn.Conv2d(64, num_classes, 1, stride=1) 
+        self.obj_hm = nn.Conv2d(64*3, num_classes, 1, stride=1) 
         self.lang_encoder = RNNEncoder(vocab_size, word_embedding_size, word_vec_size, hidden_size)
 #        self.reason = GaranAttention(d_q=64, d_v=64, n_head=n_head)
 #        self.top = nn.Conv2d(64, 1, 1, stride=1)
@@ -734,7 +734,8 @@ class DLARef_aux(nn.Module):
         c3_attn_c = c3_attn.sum(1, keepdim=True)
         # get attention feature map
         att_map_c = (c1_attn_c + c2_attn_c + c3_attn_c) / 3
-        att_map_o = (c1_attn + c2_attn + c3_attn) / 3
+#        att_map_o = (c1_attn + c2_attn + c3_attn) / 3
+        att_map_o = torch.cat((c1_attn, c2_attn,c3_attn), dim=1)
         obj_map = _sigmoid(self.obj_hm(att_map_o))
 #        att_map, _ = self.reason(reason_vec, att_map_c)
 #        center_map = _sigmoid(center_logit)
