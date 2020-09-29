@@ -556,6 +556,7 @@ class RNNEncoder(nn.Module):
       embedded = nn.utils.rnn.pack_padded_sequence(embedded, sorted_input_lengths_list, batch_first=True)
 
     # forward rnn
+    self.rnn.flatten_parameters()
     output, hidden = self.rnn(embedded)
 
     # recover
@@ -703,7 +704,10 @@ class DLARef_aux(nn.Module):
               else:
                 fill_fc_weights(fc)
             self.__setattr__(head, fc)
-        self.obj_hm = nn.Conv2d(64*3, num_classes, 1, stride=1) 
+        self.obj_hm = nn.Sequential(
+			nn.Conv2d(64 * 3, 64 * 2, kernel_size=3, padding=1, bias=True),
+			nn.ReLU(inplace=True),
+			nn.Conv2d(64 * 2, num_classes, kernel_size=1, stride=1, bias=True))
         self.lang_encoder = RNNEncoder(vocab_size, word_embedding_size, word_vec_size, hidden_size)
         self.reason = GaranAttention(d_q=64, d_v=64, n_head=n_head)
         self.top = nn.Conv2d(64, 1, 1, stride=1)
@@ -719,10 +723,9 @@ class DLARef_aux(nn.Module):
         # extract language feature
         output, hidden, embedded, filter_vec1, filter_vec2, filter_vec3, reason_vec = self.lang_encoder(sentence)
         b, w = filter_vec1.size()
-        filter_vec1 = filter_vec1.view(b, w, 1, 1)
+        filter_vec1 = filter_vec1.view(b, w, 1, 1)  # b * w -> b * w * 1 * 1
         filter_vec2 = filter_vec2.view(b, w, 1, 1)
         filter_vec3 = filter_vec3.view(b, w, 1, 1)
-        reason_vec = reason_vec.view(b, w, 1, 1)
 
         # build language attention to visual
         c1, c2, c3 = y[-1], y[-2], y[-3]
@@ -733,9 +736,9 @@ class DLARef_aux(nn.Module):
 #        c2_attn_c = c2_attn.sum(1, keepdim=True)
 #        c3_attn_c = c3_attn.sum(1, keepdim=True)
         # get attention feature map
-        att_map_c = (c1_attn_c + c2_attn_c + c3_attn_c) / 3
+        att_map_c = (c1_attn + c2_attn + c3_attn) / 3
 #        att_map_o = (c1_attn + c2_attn + c3_attn) / 3
-        att_map_o = torch.cat((c1_attn, c2_attn,c3_attn), dim=1)
+        att_map_o = torch.cat((c1_attn, c2_attn, c3_attn), dim=1)
         obj_map = _sigmoid(self.obj_hm(att_map_o))
         
         att_map_c, _ = self.reason(reason_vec, att_map_c)
