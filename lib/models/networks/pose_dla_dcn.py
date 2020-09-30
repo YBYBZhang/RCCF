@@ -709,8 +709,8 @@ class DLARef_aux(nn.Module):
 			nn.ReLU(inplace=True),
 			nn.Conv2d(64 * 2, num_classes, kernel_size=1, stride=1, bias=True))
         self.lang_encoder = RNNEncoder(vocab_size, word_embedding_size, word_vec_size, hidden_size)
-        self.reason = GaranAttention(d_q=64, d_v=64, n_head=n_head)
-        self.top = nn.Conv2d(64, 1, 1, stride=1)
+#        self.reason = GaranAttention(d_q=64, d_v=64, n_head=n_head)
+#        self.top = nn.Conv2d(64, 1, 1, stride=1)
 
     def forward(self, x, sentence):
         x = self.base(x)
@@ -736,14 +736,19 @@ class DLARef_aux(nn.Module):
 #        c2_attn_c = c2_attn.sum(1, keepdim=True)
 #        c3_attn_c = c3_attn.sum(1, keepdim=True)
         # get attention feature map
-        att_map_c = (c1_attn + c2_attn + c3_attn) / 3
-#        att_map_o = (c1_attn + c2_attn + c3_attn) / 3
+#        att_map_o = (c1_attn + c2_attn + c3_attn) / 3  # remember to modify self.obj_hm when using this
         att_map_o = torch.cat((c1_attn, c2_attn, c3_attn), dim=1)
         obj_map = _sigmoid(self.obj_hm(att_map_o))
         
+        att_map_c = (c1_attn + c2_attn + c3_attn) / 3
 #        att_map_c, _ = self.reason(reason_vec, att_map_c)
-        center_map = _sigmoid(self.top(att_map_c))
-#        center_map = _sigmoid(att_map_c)
+#        center_map = _sigmoid(self.top(att_map_c))
+
+        reason_vec = reason_vec.view(b, w, 1, 1)
+        att_map_c = att_map_c * reason_vec
+        att_map_c = att_map_c.sum(1, keepdim=True)
+        center_map = _sigmoid(att_map_c)
+        
         z = {}
         z['hm'] = center_map
         z['obj_hm'] = obj_map
