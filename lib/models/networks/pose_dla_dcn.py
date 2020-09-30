@@ -749,7 +749,10 @@ class DLARef_aux(nn.Module):
         z['hm'] = center_map
         z['obj_hm'] = obj_map
         for head in self.heads:
-            z[head] = self.__getattr__(head)(y[-1])
+            if 'obj' in head:
+                z[head] = self.__getattr__(head)(y[-1])
+            else:
+                z[head] = self.__getattr__(head)(att_map_c)
         return [z]
 
 
