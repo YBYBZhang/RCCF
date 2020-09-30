@@ -741,8 +741,7 @@ class DLARef_aux(nn.Module):
         att_map_o = torch.cat((c1_attn, c2_attn, c3_attn), dim=1)
         obj_map = _sigmoid(self.obj_hm(att_map_o))
         
-        att_map_c, _ = self.reason(reason_vec, att_map_c)
-#        center_map = _sigmoid(center_logit)
+#        att_map_c, _ = self.reason(reason_vec, att_map_c)
         center_map = _sigmoid(self.top(att_map_c))
 #        center_map = _sigmoid(att_map_c)
         z = {}

@@ -98,7 +98,7 @@ class RefdetLoss(torch.nn.Module):
     sub_loss = opt.wh_weight * wh_loss + opt.off_weight * off_loss + opt.hm_weight *  hm_loss
     if opt.use_aux:
         obj_loss = opt.wh_weight * obj_wh_loss + opt.off_weight * obj_off_loss + opt.hm_weight * obj_hm_loss
-        loss = 0.1 * obj_loss + sub_loss
+        loss = 0. * obj_loss + sub_loss
         loss_stats = {'loss': loss, 'sub_loss': sub_loss, 'wh_loss': wh_loss, 'off_loss': off_loss, 'hm_loss': hm_loss, 'obj_loss': obj_loss, 'obj_hm_loss': obj_hm_loss, 'obj_wh_loss': obj_wh_loss, 'obj_off_loss': obj_off_loss}
     else:
         loss = sub_loss
