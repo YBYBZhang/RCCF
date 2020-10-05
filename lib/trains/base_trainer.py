@@ -101,6 +101,8 @@ class BaseTrainer(object):
       
       if opt.test or phase == 'val':
         self.save_result(output, batch, results)
+      else:
+        self.batch_accuracy(output, batch)
       del output, loss, loss_stats
     
     bar.finish()
@@ -112,6 +114,9 @@ class BaseTrainer(object):
     raise NotImplementedError
 
   def save_result(self, output, batch, results):
+    raise NotImplementedError
+
+  def batch_accuracy(self, output, batch):
     raise NotImplementedError
 
   def _get_losses(self, opt):

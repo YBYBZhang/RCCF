@@ -12,6 +12,7 @@ from models.utils import _sigmoid
 from utils.debugger import Debugger
 from utils.post_process import ctdet_post_process
 from utils.oracle_utils import gen_oracle_map
+from utils.IOU import iou
 from .base_trainer import BaseTrainer
 
 class RefdetLoss(torch.nn.Module):
@@ -98,7 +99,7 @@ class RefdetLoss(torch.nn.Module):
     sub_loss = opt.wh_weight * wh_loss + opt.off_weight * off_loss + opt.hm_weight *  hm_loss
     if opt.use_aux:
         obj_loss = opt.wh_weight * obj_wh_loss + opt.off_weight * obj_off_loss + opt.hm_weight * obj_hm_loss
-        loss = 0. * obj_loss + sub_loss
+        loss = 0.1 * obj_loss + sub_loss
         loss_stats = {'loss': loss, 'sub_loss': sub_loss, 'wh_loss': wh_loss, 'off_loss': off_loss, 'hm_loss': hm_loss, 'obj_loss': obj_loss, 'obj_hm_loss': obj_hm_loss, 'obj_wh_loss': obj_wh_loss, 'obj_off_loss': obj_off_loss}
     else:
         loss = sub_loss
@@ -171,3 +172,19 @@ class RefdetTrainer(BaseTrainer):
         'gt_bbox': batch['meta']['gt_det'][0][0][0:4].tolist()})
 #    print('predict : ', dets[0][0][0:4])
 #    print('gt_bbox : ', batch['meta']['gt_det'][0][0][0:4])
+
+  def batch_accuracy(self, output, batch):
+    reg = output['reg'] if self.opt.reg_offset else None
+    dets = ctdet_decode(
+      output['hm'], output['wh'], reg=reg,
+      cat_spec_wh=self.opt.cat_spec_wh, K=1)
+    dets = dets.detach().cpu().numpy().reshape(-1, dets.shape[2])
+    ious = []
+    for p, g in zip(dets, batch['meta']['gt_det']):
+      i = iou(p[0:4], g[0][0:4])
+      ious.append(i)
+    ious = np.array(ious)
+    print(ious)
+    print("BATCH ACC: ", ious[ious > 0.5].sum() * 1.0 / len(dets))
+    
+
