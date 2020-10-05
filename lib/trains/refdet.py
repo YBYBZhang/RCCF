@@ -12,6 +12,7 @@ from models.utils import _sigmoid
 from utils.debugger import Debugger
 from utils.post_process import ctdet_post_process
 from utils.oracle_utils import gen_oracle_map
+from utils.IOU import iou
 from .base_trainer import BaseTrainer
 
 class RefdetLoss(torch.nn.Module):
@@ -171,3 +172,18 @@ class RefdetTrainer(BaseTrainer):
         'gt_bbox': batch['meta']['gt_det'][0][0][0:4].tolist()})
 #    print('predict : ', dets[0][0][0:4])
 #    print('gt_bbox : ', batch['meta']['gt_det'][0][0][0:4])
+
+  def batch_accuracy(self, output, batch):
+    reg = output['reg'] if self.opt.reg_offset else None
+    dets = ctdet_decode(
+      output['hm'], output['wh'], reg=reg,
+      cat_spec_wh=self.opt.cat_spec_wh, K=1)
+    dets = dets.detach().cpu().numpy().reshape(-1, dets.shape[2])
+    ious = []
+    for p, g in zip(dets, batch['meta']['gt_det']):
+      i = iou(p[0:4], g[0][0:4])
+      ious.append(i)
+    ious = np.array(ious)
+    print(ious)
+    print("BATCH ACC: ", ious[ious > 0.5].sum() * 1.0 / len(dets))
+    
