@@ -184,7 +184,7 @@ class RefdetTrainer(BaseTrainer):
       i = iou(p[0:4], g[0][0:4])
       ious.append(i)
     ious = np.array(ious)
-    print(ious)
+    #print(ious)
     print("BATCH ACC: ", ious[ious > 0.5].sum() * 1.0 / len(dets))
     
 

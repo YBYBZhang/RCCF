@@ -91,6 +91,8 @@ def main(opt):
       for k, v in log_dict_val.items():
         logger.scalar_summary('val_{}'.format(k), v, epoch)
         logger.write('{} {:8f} | '.format(k, v))
+      logger.scalar_summary('ACC', acc, epoch)
+      logger.write('ACC {:8f} | '.format(acc))
       if best < acc:
         #best = log_dict_val[opt.metric]
         best = acc
@@ -103,6 +105,7 @@ def main(opt):
       #           epoch, model, optimizer)
       lr = opt.lr * (0.1 ** (opt.lr_step.index(epoch) + 1))
       print('Drop LR to', lr)
+      logger.write('Drop LR to {}\n'.format(lr))
       for param_group in optimizer.param_groups:
           param_group['lr'] = lr
   logger.close()

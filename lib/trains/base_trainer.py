@@ -71,7 +71,11 @@ class BaseTrainer(object):
         for k in batch['objects']:
           if k != 'meta':
             batch['objects'][k] = batch['objects'][k].to(device=opt.device, non_blocking=True)    
-      output, loss, loss_stats = model_with_loss(batch)
+      try:
+        output, loss, loss_stats = model_with_loss(batch)
+      except RuntimeError as err:
+        print(err)
+        continue
       loss = loss.mean()
       if phase == 'train':
         self.optimizer.zero_grad()

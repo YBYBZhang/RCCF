@@ -518,6 +518,7 @@ class RNNEncoder(nn.Module):
     self.filter2 = nn.Linear(n_layers * self.num_dirs * hidden_size, 64)
     self.filter3 = nn.Linear(n_layers * self.num_dirs * hidden_size, 64)
     self.reason_filter = nn.Linear(n_layers * self.num_dirs * hidden_size, 64)
+    self.afs = nn.Linear(n_layers * self.num_dirs * hidden_size, 3)
 
   def forward(self, input_labels):
     """
@@ -580,8 +581,9 @@ class RNNEncoder(nn.Module):
       filter_vec2 = self.filter2(hidden)
       filter_vec3 = self.filter3(hidden)
       reason_vec = self.reason_filter(hidden)
+      alpha = self.afs(hidden)
 
-    return output, hidden, embedded, filter_vec1, filter_vec2, filter_vec3, reason_vec
+    return output, hidden, embedded, filter_vec1, filter_vec2, filter_vec3, reason_vec, alpha
 
 class DLARef(nn.Module):
     def __init__(self, base_name, heads, pretrained, down_ratio, final_kernel,
@@ -638,7 +640,7 @@ class DLARef(nn.Module):
             y.append(x[i].clone())
         self.ida_up(y, 0, len(y))
         # extract language feature
-        output, hidden, embedded, filter_vec1, filter_vec2, filter_vec3, _ = self.lang_encoder(sentence)
+        output, hidden, embedded, filter_vec1, filter_vec2, filter_vec3, _, _ = self.lang_encoder(sentence)
         b, w = filter_vec1.size()
         filter_vec1 = filter_vec1.view(b, w, 1, 1)
         filter_vec2 = filter_vec2.view(b, w, 1, 1)
@@ -705,12 +707,12 @@ class DLARef_aux(nn.Module):
                 fill_fc_weights(fc)
             self.__setattr__(head, fc)
         self.obj_hm = nn.Sequential(
-			nn.Conv2d(64 * 3, 64 * 2, kernel_size=3, padding=1, bias=True),
+			nn.Conv2d(64, 64 * 2, kernel_size=3, padding=1, bias=True),
 			nn.ReLU(inplace=True),
 			nn.Conv2d(64 * 2, num_classes, kernel_size=1, stride=1, bias=True))
         self.lang_encoder = RNNEncoder(vocab_size, word_embedding_size, word_vec_size, hidden_size)
-#        self.reason = GaranAttention(d_q=64, d_v=64, n_head=n_head)
-#        self.top = nn.Conv2d(64, 1, 1, stride=1)
+        self.reason = GaranAttention(d_q=64, d_v=64, n_head=n_head)
+        self.top = nn.Conv2d(64, 1, 1, stride=1)
 
     def forward(self, x, sentence):
         x = self.base(x)
@@ -721,33 +723,35 @@ class DLARef_aux(nn.Module):
             y.append(x[i].clone())
         self.ida_up(y, 0, len(y))
         # extract language feature
-        output, hidden, embedded, filter_vec1, filter_vec2, filter_vec3, reason_vec = self.lang_encoder(sentence)
+        output, hidden, embedded, filter_vec1, filter_vec2, filter_vec3, reason_vec, alpha = self.lang_encoder(sentence)
         b, w = filter_vec1.size()
-        filter_vec1 = filter_vec1.view(b, w, 1, 1)  # b * w -> b * w * 1 * 1
-        filter_vec2 = filter_vec2.view(b, w, 1, 1)
-        filter_vec3 = filter_vec3.view(b, w, 1, 1)
+        alpha = alpha.view(b, 3, 1, 1, 1)
+#        filter_vec1 = filter_vec1.view(b, w, 1, 1)  # b * w -> b * w * 1 * 1
+#        filter_vec2 = filter_vec2.view(b, w, 1, 1)
+#        filter_vec3 = filter_vec3.view(b, w, 1, 1)
 
         # build language attention to visual
         c1, c2, c3 = y[-1], y[-2], y[-3]
-        c1_attn = c1 * filter_vec1
-        c2_attn = c2 * filter_vec2
-        c3_attn = c3 * filter_vec3
+        att_map = alpha[:, 0] * c1 + alpha[:, 1] * c2 + alpha[:, 2] * c3
+#        c1_attn = c1 * filter_vec1
+#        c2_attn = c2 * filter_vec2
+#        c3_attn = c3 * filter_vec3
 #        c1_attn_c = c1_attn.sum(1, keepdim=True)
 #        c2_attn_c = c2_attn.sum(1, keepdim=True)
 #        c3_attn_c = c3_attn.sum(1, keepdim=True)
         # get attention feature map
 #        att_map_o = (c1_attn + c2_attn + c3_attn) / 3  # remember to modify self.obj_hm when using this
-        att_map_o = torch.cat((c1_attn, c2_attn, c3_attn), dim=1)
-        obj_map = _sigmoid(self.obj_hm(att_map_o))
+#        att_map_o = torch.cat((c1_attn, c2_attn, c3_attn), dim=1)
+        obj_map = _sigmoid(self.obj_hm(att_map))
         
-        att_map_c = (c1_attn + c2_attn + c3_attn) / 3
-#        att_map_c, _ = self.reason(reason_vec, att_map_c)
-#        center_map = _sigmoid(self.top(att_map_c))
+#        att_map_c = (c1_attn + c2_attn + c3_attn) / 3
+        att_map_c, _ = self.reason(reason_vec, att_map)
+        center_map = _sigmoid(self.top(att_map_c))
 
-        reason_vec = reason_vec.view(b, w, 1, 1)
-        att_map_c = att_map_c * reason_vec
-        att_map_c = att_map_c.sum(1, keepdim=True)
-        center_map = _sigmoid(att_map_c)
+#        reason_vec = reason_vec.view(b, w, 1, 1)
+#        att_map_c = att_map_c * reason_vec
+#        att_map_c = att_map_c.sum(1, keepdim=True)
+#        center_map = _sigmoid(att_map_c)
         
         z = {}
         z['hm'] = center_map

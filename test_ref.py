@@ -46,8 +46,9 @@ def main(opt):
   optimizer = torch.optim.Adam(model.parameters(), opt.lr)
   start_epoch = 0
   if opt.load_model != '':
-    model, optimizer, start_epoch = load_model(
+    model, optimizer, start_epoch, best = load_model(
       model, opt.load_model, optimizer, opt.resume, opt.lr, opt.lr_step)
+    print("BEST ACC: ", best)
 
   Trainer = train_factory[opt.task]
   trainer = Trainer(opt, model, optimizer)
