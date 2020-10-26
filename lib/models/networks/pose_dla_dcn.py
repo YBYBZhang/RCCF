@@ -16,6 +16,8 @@ import torch.utils.model_zoo as model_zoo
 from .DCNv2.dcn_v2 import DCN
 from models.utils import _sigmoid
 from models.networks.garan import *
+from models.networks.afs import FeatureNormalize
+from models.networks.darknet import darknet53
 
 BN_MOMENTUM = 0.1
 logger = logging.getLogger(__name__)
@@ -501,7 +503,7 @@ class DLASeg(nn.Module):
 
 class RNNEncoder(nn.Module):
   def __init__(self, vocab_size, word_embedding_size, word_vec_size, hidden_size, bidirectional=True,
-               input_dropout_p=0, dropout_p=0, n_layers=1, rnn_type='lstm', variable_lengths=True):
+               input_dropout_p=0, dropout_p=0, n_layers=1, rnn_type='gru', variable_lengths=True):
     super(RNNEncoder, self).__init__()
     self.variable_lengths = variable_lengths
     self.embedding = nn.Embedding(vocab_size, word_embedding_size)
@@ -590,26 +592,30 @@ class DLARef(nn.Module):
                  last_level, head_conv, vocab_size, word_embedding_size, word_vec_size, hidden_size, out_channel=0):
         super(DLARef, self).__init__()
         assert down_ratio in [2, 4, 8, 16]
-        self.first_level = int(np.log2(down_ratio))
-        self.last_level = last_level
-        self.base = globals()[base_name](pretrained=pretrained)
-        channels = self.base.channels
-        scales = [2 ** i for i in range(len(channels[self.first_level:]))]
-        self.dla_up = DLAUp(self.first_level, channels[self.first_level:], scales)
-        #self.sigmoid = nn.Sigmoid()
-
-        if out_channel == 0:
-            out_channel = channels[self.first_level]
-
-        self.ida_up = IDAUp(out_channel, channels[self.first_level:self.last_level], 
-                            [2 ** i for i in range(self.last_level - self.first_level)])
-        
+#        self.first_level = int(np.log2(down_ratio))
+#        self.last_level = last_level
+#        self.base = globals()[base_name](pretrained=pretrained)
+#        channels = self.base.channels
+#        scales = [2 ** i for i in range(len(channels[self.first_level:]))]
+#        self.dla_up = DLAUp(self.first_level, channels[self.first_level:], scales)
+#        #self.sigmoid = nn.Sigmoid()
+#
+#        if out_channel == 0:
+#            out_channel = channels[self.first_level]
+#
+#        self.ida_up = IDAUp(out_channel, channels[self.first_level:self.last_level], 
+#                            [2 ** i for i in range(self.last_level - self.first_level)])
+        self.first_level = 256
+        self.encoder = darknet53(pretrained)
+        self.f1 = FeatureNormalize(256, 256, 64)
+        self.f2 = FeatureNormalize(512, 512, 64, up_sample=True, scale_factor=2)
+        self.f3 = FeatureNormalize(1024, 512, 64, up_sample=True, scale_factor=4)
         self.heads = heads
         for head in self.heads:
             classes = self.heads[head]
             if head_conv > 0:
               fc = nn.Sequential(
-                  nn.Conv2d(channels[self.first_level], head_conv,
+                  nn.Conv2d(self.first_level, head_conv,
                     kernel_size=3, padding=1, bias=True),
                   nn.ReLU(inplace=True),
                   nn.Conv2d(head_conv, classes, 
@@ -620,7 +626,7 @@ class DLARef(nn.Module):
               else:
                 fill_fc_weights(fc)
             else:
-              fc = nn.Conv2d(channels[self.first_level], classes, 
+              fc = nn.Conv2d(self.first_level, classes, 
                   kernel_size=final_kernel, stride=1, 
                   padding=final_kernel // 2, bias=True)
               if 'hm' in head:
@@ -632,21 +638,25 @@ class DLARef(nn.Module):
         self.lang_encoder = RNNEncoder(vocab_size, word_embedding_size, word_vec_size, hidden_size)
 
     def forward(self, x, sentence):
-        x = self.base(x)
-        x = self.dla_up(x)
-
-        y = []
-        for i in range(self.last_level - self.first_level):
-            y.append(x[i].clone())
-        self.ida_up(y, 0, len(y))
+#        x = self.base(x)
+#        x = self.dla_up(x)
+#
+#        y = []
+#        for i in range(self.last_level - self.first_level):
+#            y.append(x[i].clone())
+#        self.ida_up(y, 0, len(y))
         # extract language feature
+        x1, x2, x3 = self.encoder(x)
+        c1 = self.f1(x1)
+        c2 = self.f2(x2)
+        c3 = self.f3(x3)
         output, hidden, embedded, filter_vec1, filter_vec2, filter_vec3, _, _ = self.lang_encoder(sentence)
         b, w = filter_vec1.size()
         filter_vec1 = filter_vec1.view(b, w, 1, 1)
         filter_vec2 = filter_vec2.view(b, w, 1, 1)
         filter_vec3 = filter_vec3.view(b, w, 1, 1)
         # build language attention to visual
-        c1, c2, c3 = y[-1], y[-2], y[-3]
+#        c1, c2, c3 = y[-1], y[-2], y[-3]
         c1_attn = c1 * filter_vec1
         c2_attn = c2 * filter_vec2
         c3_attn = c3 * filter_vec3
@@ -660,8 +670,86 @@ class DLARef(nn.Module):
         z = {}
         z['hm'] = center_map
         for head in self.heads:
-            z[head] = self.__getattr__(head)(y[-1])
+            z[head] = self.__getattr__(head)(x1)
         return [z]
+
+#class DLARef(nn.Module):
+#    def __init__(self, base_name, heads, pretrained, down_ratio, final_kernel,
+#                 last_level, head_conv, vocab_size, word_embedding_size, word_vec_size, hidden_size, out_channel=0):
+#        super(DLARef, self).__init__()
+#        assert down_ratio in [2, 4, 8, 16]
+#        self.first_level = int(np.log2(down_ratio))
+#        self.last_level = last_level
+#        self.base = globals()[base_name](pretrained=pretrained)
+#        channels = self.base.channels
+#        scales = [2 ** i for i in range(len(channels[self.first_level:]))]
+#        self.dla_up = DLAUp(self.first_level, channels[self.first_level:], scales)
+#        #self.sigmoid = nn.Sigmoid()
+#
+#        if out_channel == 0:
+#            out_channel = channels[self.first_level]
+#
+#        self.ida_up = IDAUp(out_channel, channels[self.first_level:self.last_level], 
+#                            [2 ** i for i in range(self.last_level - self.first_level)])
+#        
+#        self.heads = heads
+#        for head in self.heads:
+#            classes = self.heads[head]
+#            if head_conv > 0:
+#              fc = nn.Sequential(
+#                  nn.Conv2d(channels[self.first_level], head_conv,
+#                    kernel_size=3, padding=1, bias=True),
+#                  nn.ReLU(inplace=True),
+#                  nn.Conv2d(head_conv, classes, 
+#                    kernel_size=final_kernel, stride=1, 
+#                    padding=final_kernel // 2, bias=True))
+#              if 'hm' in head:
+#                fc[-1].bias.data.fill_(-2.19)
+#              else:
+#                fill_fc_weights(fc)
+#            else:
+#              fc = nn.Conv2d(channels[self.first_level], classes, 
+#                  kernel_size=final_kernel, stride=1, 
+#                  padding=final_kernel // 2, bias=True)
+#              if 'hm' in head:
+#                fc.bias.data.fill_(-2.19)
+#              else:
+#                fill_fc_weights(fc)
+#            self.__setattr__(head, fc)
+#        
+#        self.lang_encoder = RNNEncoder(vocab_size, word_embedding_size, word_vec_size, hidden_size)
+#
+#    def forward(self, x, sentence):
+#        x = self.base(x)
+#        x = self.dla_up(x)
+#
+#        y = []
+#        for i in range(self.last_level - self.first_level):
+#            y.append(x[i].clone())
+#        self.ida_up(y, 0, len(y))
+#        # extract language feature
+#        output, hidden, embedded, filter_vec1, filter_vec2, filter_vec3, _, _ = self.lang_encoder(sentence)
+#        b, w = filter_vec1.size()
+#        filter_vec1 = filter_vec1.view(b, w, 1, 1)
+#        filter_vec2 = filter_vec2.view(b, w, 1, 1)
+#        filter_vec3 = filter_vec3.view(b, w, 1, 1)
+#        # build language attention to visual
+#        c1, c2, c3 = y[-1], y[-2], y[-3]
+#        c1_attn = c1 * filter_vec1
+#        c2_attn = c2 * filter_vec2
+#        c3_attn = c3 * filter_vec3
+#        c1_attn = c1_attn.sum(1, keepdim=True)
+#        c2_attn = c2_attn.sum(1, keepdim=True)
+#        c3_attn = c3_attn.sum(1, keepdim=True)
+#        # build center map
+#        center_logit = (c1_attn + c2_attn + c3_attn) / 3
+#        #center_map = torch.sigmoid(center_logit)
+#        center_map = _sigmoid(center_logit)
+#        z = {}
+#        z['hm'] = center_map
+#        for head in self.heads:
+#            z[head] = self.__getattr__(head)(y[-1])
+#        return [z]
 
 class DLARef_aux(nn.Module):
     def __init__(self, base_name, heads, pretrained, down_ratio, final_kernel,

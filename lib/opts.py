@@ -67,7 +67,7 @@ class opts(object):
                                   '0 for no conv layer'
                                   '-1 for default setting: '
                                   '64 for resnets and 256 for dla.')
-    self.parser.add_argument('--down_ratio', type=int, default=4,
+    self.parser.add_argument('--down_ratio', type=int, default=8,
                              help='output stride. Currently only supports 4.')
 
     # input
